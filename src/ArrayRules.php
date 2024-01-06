@@ -3,10 +3,10 @@
 namespace NovaItemsField;
 
 use Closure;
-use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Contracts\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 
-class ArrayRules implements ValidationRule
+class ArrayRules implements Rule
 {
     public $rules = [];
 
@@ -53,18 +53,36 @@ class ArrayRules implements ValidationRule
         return $rules;
     }
 
-    public function validate(string $attribute, $value, Closure $fail): void
+    /**
+     * Determine if the validation rule passes.
+     *
+     * @param  string  $attribute
+     * @param  mixed  $value
+     * @return bool
+     */
+    public function passes($attribute, $value)
     {
         $validationAttribute = $this->getValidationAttribute($attribute);
         $input = [$validationAttribute => json_decode($value)];
-        $rules =  $this->getRules($validationAttribute);
-        $validator = Validator::make($input, $rules, [], [(string)($validationAttribute) => 'list', $validationAttribute . '.*' => 'input']);
+        $validator = Validator::make($input, $this->getRules($validationAttribute), [], ["{$validationAttribute}" => 'list', "{$validationAttribute}.*" => 'input']);
         $errors = [];
         foreach ($validator->errors()->toArray() as $attr => $error) {
             $errors[$this->getErrorAttribute($attribute, $attr)] = $error;
         }
-        if (count($errors)) {
-            $fail(json_encode($errors));
-        }
+        $this->message = json_encode($errors);
+
+        return $validator->passes();
     }
+
+    /**
+     * Get the validation error message.
+     *
+     * @return string
+     */
+    public function message()
+    {
+        return $this->message;
+    }
+
+    
 }
